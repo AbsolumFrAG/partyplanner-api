@@ -19,23 +19,43 @@ const validate = (req, res, next) => {
 router.get("/", authenticate, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT p.*, u.name as creator_name,
-       (SELECT json_agg(json_build_object(
-         'id', pi.id,
-         'name', pi.name,
-         'quantity', pi.quantity,
-         'brought_by', u2.name
-       ))
-       FROM party_items pi
-       JOIN users u2 ON pi.user_id = u2.id
-       WHERE pi.party_id = p.id) as items
-       FROM parties p 
-       JOIN users u ON p.creator_id = u.id
-       WHERE p.id IN (
-         SELECT party_id FROM party_participants WHERE user_id = $1
-       )
-       OR p.creator_id = $1
-       ORDER BY p.date`,
+      `SELECT 
+        p.*, 
+        u.name as creator_name,
+        (SELECT json_agg(
+          json_build_object(
+            'id', pi.id,
+            'name', pi.name,
+            'quantity', pi.quantity,
+            'description', pi.description,
+            'category', pi.category,
+            'user_id', pi.user_id,
+            'created_at', pi.created_at,
+            'updated_at', pi.updated_at,
+            'brought_by', u2.name
+          )
+        )
+        FROM party_items pi
+        JOIN users u2 ON pi.user_id = u2.id
+        WHERE pi.party_id = p.id) as items,
+        (SELECT json_agg(
+          json_build_object(
+            'id', u3.id,
+            'name', u3.name,
+            'email', u3.email,
+            'created_at', u3.created_at
+          )
+        )
+        FROM party_participants pp
+        JOIN users u3 ON pp.user_id = u3.id
+        WHERE pp.party_id = p.id) as participants
+      FROM parties p 
+      JOIN users u ON p.creator_id = u.id
+      WHERE p.id IN (
+        SELECT party_id FROM party_participants WHERE user_id = $1
+      )
+      OR p.creator_id = $1
+      ORDER BY p.date`,
       [req.user.id]
     );
 
@@ -52,10 +72,26 @@ router.get("/", authenticate, async (req, res) => {
 router.post(
   "/",
   [
-    authenticate,
     body("name").trim().notEmpty().withMessage("Le nom est requis"),
-    body("date").isISO8601().withMessage("La date doit être au format ISO8601"),
-    body("location").trim().notEmpty().withMessage("Le lieu est requis"),
+    body("quantity")
+      .isInt({ min: 1 })
+      .withMessage("La quantité doit être supérieure à 0"),
+    body("category")
+      .optional()
+      .isIn([
+        "Boissons",
+        "Nourriture",
+        "Desserts",
+        "Snacks",
+        "Décorations",
+        "Ustensiles",
+        "Autres",
+      ])
+      .withMessage("Catégorie invalide"),
+    body("description")
+      .optional()
+      .isLength({ max: 500 })
+      .withMessage("La description ne peut pas dépasser 500 caractères"),
     validate,
   ],
   async (req, res) => {
@@ -65,7 +101,16 @@ router.post(
       const { name, date, location, description } = req.body;
 
       const partyResult = await client.query(
-        "INSERT INTO parties (name, date, location, description, creator_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+        `INSERT INTO parties (
+          name, 
+          date, 
+          location, 
+          description, 
+          creator_id,
+          created_at
+        ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+        RETURNING *,
+        (SELECT name FROM users WHERE id = $5) as creator_name`,
         [name, date, location, description, req.user.id]
       );
 
@@ -183,13 +228,14 @@ router.put(
 
       const result = await pool.query(
         `UPDATE parties 
-       SET name = COALESCE($1, name),
-           date = COALESCE($2, date),
-           location = COALESCE($3, location),
-           description = COALESCE($4, description),
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $5
-       RETURNING *`,
+        SET name = COALESCE($1, name),
+            date = COALESCE($2, date),
+            location = COALESCE($3, location),
+            description = COALESCE($4, description),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $5
+        RETURNING *,
+        (SELECT name FROM users WHERE id = creator_id) as creator_name`,
         [name, date, location, description, id]
       );
 
@@ -420,11 +466,25 @@ router.post(
       }
 
       const result = await pool.query(
-        `INSERT INTO party_items (party_id, user_id, name, quantity)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *, 
-       (SELECT name FROM users WHERE id = $2) as brought_by`,
-        [id, req.user.id, name, quantity]
+        `INSERT INTO party_items (
+          party_id, 
+          user_id, 
+          name, 
+          quantity,
+          description,
+          category,
+          created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+        RETURNING *,
+        (SELECT name FROM users WHERE id = $2) as brought_by`,
+        [
+          id,
+          req.user.id,
+          name,
+          quantity,
+          req.body.description || null,
+          req.body.category || null,
+        ]
       );
 
       // Notifier les autres participants
