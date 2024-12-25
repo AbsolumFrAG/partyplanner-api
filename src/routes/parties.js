@@ -424,12 +424,13 @@ router.delete(
 router.post(
   "/:id/items",
   [
+    authenticate,
+    param("id").isInt().withMessage("ID invalide"),
     body("name").trim().notEmpty().withMessage("Le nom est requis"),
     body("quantity")
       .isInt({ min: 1 })
       .withMessage("La quantité doit être supérieure à 0"),
     body("category")
-      .optional()
       .isIn([
         "Boissons",
         "Nourriture",
@@ -449,7 +450,7 @@ router.post(
   async (req, res) => {
     try {
       const { id } = req.params;
-      const { name, quantity } = req.body;
+      const { name, quantity, category } = req.body;
 
       // Vérifier que l'utilisateur est participant
       const participantCheck = await pool.query(
@@ -469,20 +470,12 @@ router.post(
           user_id, 
           name, 
           quantity,
-          description,
           category,
           created_at
         ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
         RETURNING *,
         (SELECT name FROM users WHERE id = $2) as brought_by`,
-        [
-          id,
-          req.user.id,
-          name,
-          quantity,
-          req.body.description || null,
-          req.body.category || null,
-        ]
+        [id, req.user.id, name, quantity, category]
       );
 
       // Notifier les autres participants

@@ -52,7 +52,6 @@ const initializeDatabase = async () => {
           user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
           name VARCHAR(255) NOT NULL,
           quantity INTEGER NOT NULL,
-          description TEXT,
           category VARCHAR(50),
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE,
@@ -60,7 +59,6 @@ const initializeDatabase = async () => {
           CONSTRAINT positive_quantity CHECK (quantity > 0),
           -- Vérification de la catégorie
           CONSTRAINT valid_category CHECK (
-            category IS NULL OR 
             category IN ('Boissons', 'Nourriture', 'Desserts', 'Snacks', 'Décorations', 'Ustensiles', 'Autres')
           )
         );
