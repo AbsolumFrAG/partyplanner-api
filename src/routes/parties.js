@@ -1,6 +1,6 @@
 const express = require("express");
 const { body, param, validationResult } = require("express-validator");
-const pool = require("../config/database");
+const { pool } = require("../config/database");
 const authenticate = require("../middleware/auth");
 const { sendPushNotification } = require("../config/firebase");
 
@@ -414,11 +414,9 @@ router.post(
       );
 
       if (participantCheck.rows.length === 0) {
-        return res
-          .status(403)
-          .json({
-            message: "Vous devez être participant pour ajouter un item",
-          });
+        return res.status(403).json({
+          message: "Vous devez être participant pour ajouter un item",
+        });
       }
 
       const result = await pool.query(
