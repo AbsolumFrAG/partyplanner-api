@@ -60,7 +60,6 @@ router.post(
   ],
   async (req, res) => {
     const client = await pool.connect();
-    console.log('Init');
     try {
       await client.query("BEGIN");
       const { name, date, location, description } = req.body;
