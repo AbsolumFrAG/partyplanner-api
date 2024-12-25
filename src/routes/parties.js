@@ -27,7 +27,6 @@ router.get("/", authenticate, async (req, res) => {
             'id', pi.id,
             'name', pi.name,
             'quantity', pi.quantity,
-            'description', pi.description,
             'category', pi.category,
             'user_id', pi.user_id,
             'created_at', pi.created_at,
@@ -441,10 +440,6 @@ router.post(
         "Autres",
       ])
       .withMessage("Catégorie invalide"),
-    body("description")
-      .optional()
-      .isLength({ max: 500 })
-      .withMessage("La description ne peut pas dépasser 500 caractères"),
     validate,
   ],
   async (req, res) => {
