@@ -467,7 +467,7 @@ router.post(
           quantity,
           category,
           created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+        ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
         RETURNING *,
         (SELECT name FROM users WHERE id = $2) as brought_by`,
         [id, req.user.id, name, quantity, category]
