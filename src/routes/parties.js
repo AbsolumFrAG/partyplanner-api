@@ -72,26 +72,10 @@ router.get("/", authenticate, async (req, res) => {
 router.post(
   "/",
   [
+    authenticate,
     body("name").trim().notEmpty().withMessage("Le nom est requis"),
-    body("quantity")
-      .isInt({ min: 1 })
-      .withMessage("La quantité doit être supérieure à 0"),
-    body("category")
-      .optional()
-      .isIn([
-        "Boissons",
-        "Nourriture",
-        "Desserts",
-        "Snacks",
-        "Décorations",
-        "Ustensiles",
-        "Autres",
-      ])
-      .withMessage("Catégorie invalide"),
-    body("description")
-      .optional()
-      .isLength({ max: 500 })
-      .withMessage("La description ne peut pas dépasser 500 caractères"),
+    body("date").isISO8601().withMessage("La date doit être au format ISO8601"),
+    body("location").trim().notEmpty().withMessage("Le lieu est requis"),
     validate,
   ],
   async (req, res) => {
@@ -440,12 +424,26 @@ router.delete(
 router.post(
   "/:id/items",
   [
-    authenticate,
-    param("id").isInt().withMessage("ID invalide"),
     body("name").trim().notEmpty().withMessage("Le nom est requis"),
     body("quantity")
       .isInt({ min: 1 })
       .withMessage("La quantité doit être supérieure à 0"),
+    body("category")
+      .optional()
+      .isIn([
+        "Boissons",
+        "Nourriture",
+        "Desserts",
+        "Snacks",
+        "Décorations",
+        "Ustensiles",
+        "Autres",
+      ])
+      .withMessage("Catégorie invalide"),
+    body("description")
+      .optional()
+      .isLength({ max: 500 })
+      .withMessage("La description ne peut pas dépasser 500 caractères"),
     validate,
   ],
   async (req, res) => {
